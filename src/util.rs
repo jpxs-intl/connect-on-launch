@@ -9,7 +9,13 @@ pub fn get_process_base() -> Option<(usize, usize)> {
     };
     let process_name = process_path.file_name()?;
 
-    let Ok(maps) = proc_maps::get_process_maps(process::id()) else {
+    #[cfg(target_os = "windows")]
+    let process_id = process::id();
+
+    #[cfg(target_os = "linux")]
+    let process_id = process::id() as i32;
+
+    let Ok(maps) = proc_maps::get_process_maps(process_id) else {
         return None;
     };
 

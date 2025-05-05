@@ -7,6 +7,8 @@ use std::mem;
 use std::net::Ipv4Addr;
 use std::sync::OnceLock;
 use util::*;
+
+#[cfg(target_os = "windows")]
 use winapi::shared::minwindef::{BOOL, DWORD, HINSTANCE, LPVOID};
 
 #[derive(Debug)]

@@ -19,6 +19,7 @@ pub mod platform {
     pub const AUTH_IP_ADDRESS: usize = 0x1C8DAD68;
     pub const AUTH_PORT_ADDRESS: usize = 0x1C8DAD6C;
     pub const SERVER_PASSWORDED_ADDRESS: usize = 0x1A47D85C;
+    pub const GAME_STATE_ADDRESS: usize = 0x1CE18FE4;
 }
 
 pub use platform::*;
