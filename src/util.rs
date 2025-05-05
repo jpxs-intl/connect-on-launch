@@ -28,6 +28,7 @@ pub fn get_process_base() -> Option<(usize, usize)> {
     }
 }
 
+#[inline]
 pub fn address_from_base(offset: usize) -> *const () {
     (BASE_ADDRESS.get().unwrap() + offset) as *const ()
 }

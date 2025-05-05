@@ -25,19 +25,7 @@ thread_local! {
     static HAS_CONNECTED: Cell<bool> = const { Cell::new(false) };
 }
 
-fn connect_hook() {
-    if HAS_CONNECTED.get() {
-        if let Some(func) = DRAW_ORIGINAL.get() {
-            func();
-        }
-
-        return;
-    }
-
-    let Some(server_info) = SERVER_ADDRESS.get() else {
-        return;
-    };
-
+fn connect_game_to_server(server_info: &ServerInfo) {
     let connect_address: *mut u32 = address_from_base(addresses::SERVER_IP_ADDRESS) as *mut u32;
     let connect_port: *mut u16 = address_from_base(addresses::SERVER_PORT_ADDRESS) as *mut u16;
     let auth_address: *mut u32 = address_from_base(addresses::AUTH_IP_ADDRESS) as *mut u32;
@@ -53,6 +41,22 @@ fn connect_hook() {
         *passworded = u32::from(!server_info.passworded);
         *game_state = 2;
     }
+}
+
+fn connect_hook() {
+    if HAS_CONNECTED.get() {
+        if let Some(func) = DRAW_ORIGINAL.get() {
+            func();
+        }
+
+        return;
+    }
+
+    let Some(server_info) = SERVER_ADDRESS.get() else {
+        return;
+    };
+
+    connect_game_to_server(server_info);
 
     HAS_CONNECTED.set(true);
 }
