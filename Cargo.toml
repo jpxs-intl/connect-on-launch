@@ -1,0 +1,14 @@
+[package]
+name = "connect-on-launch"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+retour = "0.3.1"
+proc-maps = "0.4.0"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["minwindef"], default-features = false }
