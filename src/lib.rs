@@ -1,25 +1,31 @@
 mod addresses;
 mod util;
 
+use clap::Parser;
 use retour::RawDetour;
-use std::cell::Cell;
 use std::mem;
-use std::net::Ipv4Addr;
 use std::sync::OnceLock;
+use std::{cell::Cell, net::Ipv4Addr};
 use util::*;
 
 #[cfg(target_os = "windows")]
 use winapi::shared::minwindef::{BOOL, DWORD, HINSTANCE, LPVOID};
 
-#[derive(Debug)]
+#[derive(Parser, Debug)]
 struct ServerInfo {
-    address: u32,
+    #[arg(long)]
+    address: Ipv4Addr,
+
+    #[arg(long)]
     port: u16,
+
+    #[arg(long)]
     passworded: bool,
 }
 
 static SERVER_ADDRESS: OnceLock<ServerInfo> = const { OnceLock::new() };
 static BASE_ADDRESS: OnceLock<usize> = const { OnceLock::new() };
+
 static DRAW_ORIGINAL: OnceLock<fn()> = const { OnceLock::new() };
 static DRAW_HOOK: OnceLock<RawDetour> = const { OnceLock::new() };
 
@@ -35,10 +41,12 @@ fn connect_game_to_server(server_info: &ServerInfo) {
     let passworded: *mut u32 = address_from_base(addresses::SERVER_PASSWORDED_ADDRESS) as *mut u32;
     let game_state: *mut u32 = address_from_base(addresses::GAME_STATE_ADDRESS) as *mut u32;
 
+    let converted_address = server_info.address.to_bits();
+
     unsafe {
-        *connect_address = server_info.address;
+        *connect_address = converted_address;
         *connect_port = server_info.port;
-        *auth_address = server_info.address;
+        *auth_address = converted_address;
         *auth_port = server_info.port;
         *passworded = u32::from(!server_info.passworded);
         *game_state = 2;
@@ -77,25 +85,24 @@ extern "system" fn DllMain(_: HINSTANCE, reason: DWORD, _: LPVOID) -> BOOL {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn initialize() {
+pub extern "C-unwind" fn initialize() {
     let Some((base_address, _)) = get_process_base() else {
         println!("Failed to retrieve Sub Rosa base address!");
         return;
     };
     BASE_ADDRESS.set(base_address).unwrap();
 
+    let cli_info = ServerInfo::try_parse();
+
+    if let Ok(server_info) = cli_info {
+        SERVER_ADDRESS.set(server_info).unwrap();
+    } else {
+        println!("Failed to retrieve server info from command line!");
+        return;
+    }
+
     // Calculate function offset and cast to function ptr
     let func_ptr = address_from_base(addresses::HOOK_ADDRESS);
-
-    // debug
-    let debug_addr = Ipv4Addr::new(54, 39, 131, 119);
-    SERVER_ADDRESS
-        .set(ServerInfo {
-            address: debug_addr.to_bits(),
-            port: 9035,
-            passworded: false,
-        })
-        .unwrap();
 
     // Create and enable hook
     let hook = unsafe { RawDetour::new(func_ptr, connect_hook as *const ()) }.unwrap();
@@ -106,13 +113,4 @@ pub extern "C" fn initialize() {
         .set(unsafe { mem::transmute::<&(), fn()>(hook.trampoline()) })
         .unwrap();
     DRAW_HOOK.set(hook).unwrap();
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn set_address(address: u32, port: u16, passworded: bool) {
-    let _ = SERVER_ADDRESS.set(ServerInfo {
-        address,
-        port,
-        passworded,
-    });
 }
